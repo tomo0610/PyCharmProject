@@ -47,7 +47,7 @@ def application(env, start_response):
             strtype = query[0][1]
             print('Type=' + strtype)
 
-
+            # カード読取時処理
             if strtype == 'cardscan':   #カードIDがマスタに登録済みか確認
                 # カードID検索
                 _tagData = query[1][1]
@@ -75,7 +75,7 @@ def application(env, start_response):
 
                 # SQLを実行する
                 with connection.cursor() as cursor:
-                    sql = "select emp_no from 社員マスタ where felica_card_no = \'" + _cardId + "\'"
+                    sql = "select emp_no from EMPLOYEE_MASTER where felica_card_no = \'" + _cardId + "\'"
                     cursor.execute(sql)
 
                 # Select結果を取り出す
@@ -105,7 +105,7 @@ def application(env, start_response):
                     #出退勤時間記録TBLにINSERT現在時刻をINSERTする。
                     # SQLを実行する
                     with connection.cursor() as cursor:
-                        sql = "INSERT INTO 出退勤時間記録TBL VALUES  (\'" + _cardId + "\',\'" + _rsltStr + "\', SYSDATE)"
+                        sql = "INSERT INTO 出退勤時間記録 VALUES  (\'" + _cardId + "\',\'" + _rsltStr + "\', SYSDATE)"
                         r = cursor.execute(sql)
                         print(r)  # -> 1
                         # autocommitではないので、明示的にコミットする
@@ -120,6 +120,7 @@ def application(env, start_response):
 
                 return _rtnStr.encode('utf-8')
 
+            # ログイン
             elif strtype == 'login':
 
                 _empNo = query[1][1]
@@ -130,7 +131,7 @@ def application(env, start_response):
 
                 # SQLを実行する
                 with connection.cursor() as cursor:
-                    sql = 'SELECT admin_auth_flg FROM 社員マスタ WHERE emp_no = \'' + _empNo + '\' AND emp_pwd = \'' + _passWd + '\''
+                    sql = 'SELECT admin_auth_flg FROM EMPLOYEE_MASTER WHERE emp_no = \'' + _empNo + '\' AND emp_pwd = \'' + _passWd + '\''
                     cursor.execute(sql)
 
                 # fetchall()を使用すると結果がタプル(は,い,れ,つ)で帰る
@@ -164,6 +165,7 @@ def application(env, start_response):
                 # テキスト形式でDBデータを返す
                 return jsonString.encode('utf-8')
 
+            # 出退勤確認画面
             elif strtype == 'workconfadmin':
             
             	# 出退勤確認画面の中での処理分け
@@ -191,7 +193,7 @@ def application(env, start_response):
 
                 	# SQLを実行する
                 	with connection.cursor() as cursor:
-                	    sql = 'SELECT regist_date FROM 出退勤時間記録TBL, 社員マスタ WHERE 1=1 '
+                	    sql = 'SELECT regist_date FROM 出退勤時間記録, EMPLOYEE_MASTER WHERE 1=1 '
                 	    
                 	    if _periodFrom != "":
                 	    	sql += 'AND regist_date >= \'' + _periodFrom + '\''
@@ -219,127 +221,6 @@ def application(env, start_response):
                 	connection.close()
             		
             	elif
-            	
-            
-                # 画像データ取得
-                path = '/var/www/html'
-                picpath = '/pic/'
-                thpath = '/thumbnail/'
-                files = os.listdir(path + picpath)
-
-                # ファイル情報（作成日）の取得
-                arr = []
-                i = 0
-                for file in files:
-                    # ファイル名作成
-                    filepath = path + picpath + file  # ファイル情報取得用（フルパス）
-                    thumpath = path + thpath + file  # サムネイルファイル（フルパス）
-                    picfilepath = picpath + file  # オープン用ファイル名
-                    thfilepath = thpath + file  # オープン用サムネイルファイル名
-
-                    # ファイル情報（作成日）の取得
-                    dt = datetime.fromtimestamp(os.stat(filepath).st_ctime)
-                    strCtime = dt.strftime('%Y/%m/%d %H:%M:%S')
-
-                    # サムネイルファイル作成
-                    img = Image.open(filepath, 'r')
-                    thumbnail_size = (160, 120)
-                    img.thumbnail(thumbnail_size)
-                    img.save(thumpath, 'JPEG')
-
-                    arr.append([file, filepath, thumpath, picfilepath, thfilepath, strCtime])
-
-                    i = i + 1
-
-                print(arr)
-
-                # 作成日の降順で並び替え
-                arrSort = sorted(arr, key=lambda dat: dat[5], reverse=True)
-
-                print(arrSort)
-
-                # ファイル一覧結果を取り出し、json変換用の文字列を作成する
-                jsonString = '['
-
-                for ar in arrSort:
-                    jsonString = jsonString + '''
-					{
-						"filename": "''' + ar[0] + '''",
-						"filepath": "''' + ar[3] + '''",
-						"ctime": "''' + ar[5] + '''",
-						"thfile": "''' + ar[4] + '''"
-					},
-					'''
-
-                # 最後のデータの','を削除する
-                jsonString = jsonString[:len(jsonString) - 7]
-
-                jsonString = jsonString + ']'
-                print(jsonString)
-
-                # テキスト形式でDBデータを返す
-                return jsonString.encode('utf-8')
-
-            elif strtype == 'piclist':
-                # 画像データ取得
-                path = '/var/www/html'
-                picpath = '/pic/'
-                thpath = '/thumbnail/'
-                files = os.listdir(path + picpath)
-
-                # ファイル情報（作成日）の取得
-                arr = []
-                i = 0
-                for file in files:
-                    # ファイル名作成
-                    filepath = path + picpath + file  # ファイル情報取得用（フルパス）
-                    thumpath = path + thpath + file  # サムネイルファイル（フルパス）
-                    picfilepath = picpath + file  # オープン用ファイル名
-                    thfilepath = thpath + file  # オープン用サムネイルファイル名
-
-                    # ファイル情報（作成日）の取得
-                    dt = datetime.fromtimestamp(os.stat(filepath).st_ctime)
-                    strCtime = dt.strftime('%Y/%m/%d %H:%M:%S')
-
-                    # サムネイルファイル作成
-                    img = Image.open(filepath, 'r')
-                    thumbnail_size = (160, 120)
-                    img.thumbnail(thumbnail_size)
-                    img.save(thumpath, 'JPEG')
-
-                    arr.append([file, filepath, thumpath, picfilepath, thfilepath, strCtime])
-
-                    i = i + 1
-
-                print(arr)
-
-                # 作成日の降順で並び替え
-                arrSort = sorted(arr, key=lambda dat: dat[5], reverse=True)
-
-                print(arrSort)
-
-                # ファイル一覧結果を取り出し、json変換用の文字列を作成する
-                jsonString = '['
-
-                for ar in arrSort:
-                    jsonString = jsonString + '''
-					{
-						"filename": "''' + ar[0] + '''",
-						"filepath": "''' + ar[3] + '''",
-						"ctime": "''' + ar[5] + '''",
-						"thfile": "''' + ar[4] + '''"
-					},
-					'''
-
-                # 最後のデータの','を削除する
-                jsonString = jsonString[:len(jsonString) - 7]
-
-                jsonString = jsonString + ']'
-                print(jsonString)
-
-                # テキスト形式でDBデータを返す
-                return jsonString.encode('utf-8')
-
 
         else:
             check = subprocess.check_output("/home/pi/testFiles/getCardID.sh", shell=True)
